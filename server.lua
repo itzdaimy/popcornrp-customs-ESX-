@@ -1,10 +1,46 @@
-local QBCore
-local currentAdmins = {}
-if GetResourceState('qb-core') == 'started' then
-    QBCore = exports['qb-core']:GetCoreObject()
-    lib.addAce('group.admin', 'customs.admin')
+local ESX
+
+if GetResourceState('es_extended') == 'started' then
+    ESX = exports["es_extended"]:getSharedObject()
 else
-    warn('qb-core is missing, modifications won\'t cost anything')
+    print('ESX is missing; script will not function properly.')
+    return
+end
+
+local Functions = {}
+
+Functions.GetPlayer = function(src)
+    return ESX.GetPlayerFromId(src)
+end
+
+Functions.GetCash = function(player)
+    return player.getMoney() or 0 
+end
+
+Functions.GetBank = function(player)
+    local account = player.getAccount('bank')
+    return account and account.money or 0 
+end
+
+Functions.RemoveMoney = function(player, type, amount)
+    if type == 'cash' then
+        player.removeMoney(amount)
+    elseif type == 'bank' then
+        player.removeAccountMoney('bank', amount)
+    end
+end
+
+Functions.GetJob = function(player)
+    return player.getJob().name
+end
+
+Functions.Owned = function(vehicleplate)
+    local result = MySQL.scalar.await('SELECT 1 FROM owned_vehicles WHERE plate = ?', {vehicleplate})
+    return result ~= nil
+end
+
+Functions.Update = function(vehicleProps)
+    MySQL.update('UPDATE owned_vehicles SET vehicle = ? WHERE plate = ?', {json.encode(vehicleProps), vehicleProps.plate})
 end
 
 ---@return number
@@ -12,7 +48,7 @@ local function getModPrice(mod, level)
     if mod == 'cosmetic' or mod == 'colors' or mod == 18 then
         return Config.Prices[mod] --[[@as number]]
     else
-        return Config.Prices[mod][level]
+        return Config.Prices[mod][level] or 0 
     end
 end
 
@@ -20,16 +56,20 @@ end
 ---@param amount number
 ---@return boolean
 local function removeMoney(source, amount)
-    if not QBCore then return true end
-    local player = QBCore.Functions.GetPlayer(source)
-    local cashBalance = player.Functions.GetMoney('cash')
-    local bankBalance = player.Functions.GetMoney('bank')
+    local player = Functions.GetPlayer(source)
+    local cashBalance = Functions.GetCash(player)
+    local bankBalance = Functions.GetBank(player)
 
     if cashBalance >= amount then
-        player.Functions.RemoveMoney('cash', amount, "Customs")
+        Functions.RemoveMoney(player, 'cash', amount)
+        lib.notify(source, {
+            title = 'Customs',
+            description = ('You paid $%s in cash'):format(amount),
+            type = 'success',
+        })
         return true
     elseif bankBalance >= amount then
-        player.Functions.RemoveMoney('bank', amount, "Customs")
+        Functions.RemoveMoney(player, 'bank', amount)
         lib.notify(source, {
             title = 'Customs',
             description = ('You paid $%s from your bank account'):format(amount),
@@ -38,30 +78,21 @@ local function removeMoney(source, amount)
         return true
     end
 
+    lib.notify(source, {
+        title = 'Customs',
+        description = ('Not enough money! You need $%s.'):format(amount),
+        type = 'error',
+    })
     return false
 end
 
-lib.callback.register('customs:server:checkPerms', function(source)
-    if IsPlayerAceAllowed(source, 'customs.admin') then
-        return true
-    else
-        return false
-    end
-end)
-
--- Won't charge money for mods if the player's job is in the list
 lib.callback.register('customs:server:pay', function(source, mod, level)
     local zone = lib.callback.await('customs:client:zone', source)
 
-    if currentAdmins[source] then
-        if currentAdmins[source].admin then
-            return true
-        end
-    end
-
     for i, v in ipairs(Config.Zones) do
         if i == zone and v.freeMods then
-            local playerJob = QBCore.Functions.GetPlayer(source)?.PlayerData?.job?.name
+            local player = Functions.GetPlayer(source)
+            local playerJob = Functions.GetJob(player)
             for _, job in ipairs(v.freeMods) do
                 if playerJob == job then
                     return true
@@ -70,25 +101,20 @@ lib.callback.register('customs:server:pay', function(source, mod, level)
         end
     end
 
-    return removeMoney(source, getModPrice(mod, level))
+    local price = getModPrice(mod, level)
+    return removeMoney(source, price)
 end)
 
--- Won't charge money for repairs if the player's job is in the list
 lib.callback.register('customs:server:repair', function(source, bodyHealth)
     local zone = lib.callback.await('customs:client:zone', source)
 
-    if currentAdmins[source] then
-        if currentAdmins[source].admin then
-            return true
-        end
-    end
-
     for i, v in ipairs(Config.Zones) do
         if i == zone and v.freeRepair then
-            local playerJob = QBCore.Functions.GetPlayer(source)?.PlayerData?.job?.name
+            local player = Functions.GetPlayer(source)
+            local playerJob = Functions.GetJob(player)
             for _, job in ipairs(v.freeRepair) do
                 if playerJob == job then
-                    return true
+                    return true 
                 end
             end
         end
@@ -98,41 +124,10 @@ lib.callback.register('customs:server:repair', function(source, bodyHealth)
     return removeMoney(source, price)
 end)
 
-lib.callback.register('customs:server:adminMenuOpened', function(source)
-    if currentAdmins[source] then
-        if currentAdmins[source].admin then
-            return true
-        end
-    end
-    return false
-end)
-
-local function IsVehicleOwned(plate)
-    local result = MySQL.scalar.await('SELECT 1 from player_vehicles WHERE plate = ?', {plate})
-    if result then
-        return true
-    else
-        return false
-    end
-end
-
---Copied from qb-mechanicjob
 RegisterNetEvent('customs:server:saveVehicleProps', function()
     local src = source --[[@as number]]
-    local vehicleProps = lib.callback.await('customs:client:vehicleProps', src)
-    currentAdmins[src] = currentAdmins[src] or {}
-    currentAdmins[src].admin = false
-    if IsVehicleOwned(vehicleProps.plate) then
-        MySQL.update.await('UPDATE player_vehicles SET mods = ? WHERE plate = ?', {json.encode(vehicleProps), vehicleProps.plate})
+    local vehicleProps = lib.callback.await('customs:client:vehicle', src)
+    if Functions.Owned(vehicleProps.plate) then
+        Functions.Update(vehicleProps)
     end
-end)
-
---Commands
-lib.addCommand('admincustoms', {
-    help = 'Toggle customs menu for admins',
-    restricted = 'customs.admin',
-}, function(source, args, raw)
-    currentAdmins[source] = currentAdmins[source] or {}
-    currentAdmins[source].admin = true
-    TriggerClientEvent('customs:client:adminMenu', source)
 end)
