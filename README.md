@@ -1,19 +1,11 @@
+# this mod was converted to ESX by daimy (daimyh on discord)
+
 # popcornrp-customs
 A free-to-use and modify vehicle customization for FiveM using ox-lib
 
-
-https://github.com/alberttheprince/popcornrp-customs/assets/85725579/518b8ea9-d8f9-4026-8971-9bd4f1d4ab3f
-
-
-**Framework specific version by the community:**
-- [QBox](https://github.com/Qbox-project/qbx_customs)
-- [ND Framework](https://github.com/TheStoicBear/popcornrp-customs)
-- [ESX](https://github.com/Sampuke/popcornrp-customs)
-- QBCore/Oxcore (This one duh!)
-
 This release is a thank you to the FiveM open-source community and all the developers who have poured hours of their free time into creating helpful, free resources that I've used on my servers in the past and continue to use. Thank you!
 
-Thank you, Jorn (Discord: Jorn08), for his hard work on this resource and the Popcorn Roleplay Community for testing and supporting the development of this resource. Come join our server to experience our unique "Casually Serious" RP community!
+Thank you, Jorn (Discord: @Jorn#0008), for his hard work on this resource and the Popcorn Roleplay Community for testing and supporting the development of this resource. Come join our server to experience our unique "Casually Serious" RP community!
 
 Popcorn Roleplay Discord: https://discord.gg/popcornroleplay
 
@@ -41,10 +33,9 @@ Popcornrp-Customs allows you to set up the following:
 - Displayed pricing
 - All tire and paint options (including Chameleon)
 - Customize your car (duh)
-- Admin only customs menu /admincustoms
 
-You are free to modify this resource as per the attached license. **Please read and understand the license**, as it is a slightly modified MIT License.
+You are free to modify this license as per the attached license. **Please read and understand the license**, as it is a slightly modified MIT License.
 
-This resource is released with no support or promise of support. It is released as is, and we may make changes as we see fit. You may suggest changes, but we will only add or develop them if we see a need for that function for our server Popcorn Roleplay. We have thoroughly tested this resource with our small community, but feel free to report any issues that may arise.
+This resource is released with no support or promise of support. It is released as is, and we may make changes as we see fit. You may suggest changes, but we won't add or develop them unless we see a need for that function for our server Popcorn Roleplay. We have thoroughly tested this resource with our small community, but feel free to report any issues that may arise.
 
 Thank you, and enjoy!
